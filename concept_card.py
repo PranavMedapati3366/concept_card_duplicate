@@ -73,7 +73,7 @@ def save_file(presigned_url):
     parsed_url = urlparse(presigned_url)
     path = parsed_url.path
     filename = unquote(path.split('/')[-1])  # Decodes any percent-encoded characters
-    print(filename)
+    # print(filename)
 
     # The local path where the file will be saved
     local_filename = filename
@@ -83,12 +83,12 @@ def save_file(presigned_url):
 
     # Check if the request was successful
     if response.status_code == 200:
-        print("started")
+        # print("started")
         with open(local_filename, 'wb') as file:
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:  # Filter out keep-alive new chunks
                     file.write(chunk)
-        logging.info(f"File downloaded successfully and saved as {local_filename}")
+        # logging.info(f"File downloaded successfully and saved as {local_filename}")
         
         return filename
     else:
@@ -100,10 +100,11 @@ def get_material_formattype(concept_card_id):
     url = f"https://api.allen-live.in/api/v1/learningMaterials/{concept_card_id}"
 
     response = requests.get(url)
+    
     response = json.loads(response.text)
-    print(response)
+    # print(response)
     response = response.get('data',{}).get('material_info',{}).get('content_file').get('file_format')
-    print(response)
+    # print(response)
     return response
     
 
@@ -130,12 +131,16 @@ def validate_bulk(csvdata):
     bulk_upload_url = "https://api.allen-live.in/api/v1/learningMaterials/validate/bulk"
 
     response = requests.request("POST",bulk_upload_url,headers=headers,data=payload)
+    if(response.status_code == 200):
     
-    response = json.loads(response.text)
-    # print(response)
-    # # create(response,filename)
-    logging.info("valdate bulk called")
-    return response
+        response = json.loads(response.text)
+        # print(response)
+        # # create(response,filename)
+        # logging.info("valdate bulk called")
+        return response
+    else:
+        logging.error("Error Ocuured in validate Bulk",)
+        return None
 
 def create(res,filename):
     url = f"https://api.allen-live.in/api/v1/learningMaterials/bulk_create"
@@ -154,7 +159,7 @@ def create(res,filename):
                     "language": "",
                     "content_stakeholders": {
                         "faculty_name": "",
-                        "created_by": "PR",
+                        "created_by": "pranavreddy",
                         "faculty_emp_id": ""
                     },
                     "stream": "",
@@ -201,11 +206,15 @@ def create(res,filename):
     })
 
     response = requests.request("POST",url,headers=headers,data=payload)
-    logging.info("create called ")
-    response = json.loads(response.text)
-    # print(response['data']['materials'][0]["id"])
-    return response['data']['materials'][0]["id"]
-    # print(payload)
+    # logging.info("create called ")
+    if(response.status_code == 200):
+        response = json.loads(response.text)
+        # print(response['data']['materials'][0]["id"])
+        return response['data']['materials'][0]["id"]
+        # print(payload)
+    else:
+        logging.error("error occurred at create func")
+        return None
 
 def init_multipart_upload(id,file_format):
 
@@ -219,10 +228,14 @@ def init_multipart_upload(id,file_format):
     }
 
     response = requests.request("POST",url,headers=headers,data=payload)
-    response = json.loads(response.text)
-    # print("id is ",response['data']['upload_data']['upload_id'])
-    logging.info('multipart_upload called')
-    return response['data']['upload_data']['upload_id']
+    if(response.status_code == 200):
+        response = json.loads(response.text)
+        # print("id is ",response['data']['upload_data']['upload_id'])
+        # logging.info('multipart_upload called')
+        return response['data']['upload_data']['upload_id']
+    else:
+        logging.error("Error at multipart_upload")
+        return None
    
 def upload_part(id,upload_id):
     url = f"https://api.allen-live.in/api/v1/learningMaterials/{id}/upload_part"
@@ -235,8 +248,12 @@ def upload_part(id,upload_id):
         'Content-Type':'application/json'
     }
     response = requests.request("POST",url,headers=headers,data=payload)
-    response = json.loads(response.text)
-    return response['data']['upload_data']['presigned_url']
+    if(response.status_code == 200):
+        response = json.loads(response.text)
+        return response['data']['upload_data']['presigned_url']
+    else:
+        logging.error("Error occurerd at Upload part")
+        return None
     
 def upload_file(new_presigned_url, filename , file_format):
     payload = ""
@@ -249,13 +266,10 @@ def upload_file(new_presigned_url, filename , file_format):
     response = requests.request("PUT", new_presigned_url, headers=headers, data=payload)
     
     if response.status_code > 299:
-        print("error")
-        # return False
+        logging.error("error at upload_file")
         return 
     else:
-        print("added")
         etag = response.headers.get('ETag')
-        print(etag)
         return etag
 
 def complete_upload(id,etag,upload_id):
@@ -273,17 +287,54 @@ def complete_upload(id,etag,upload_id):
     }
 
     response = requests.request("POST",url,headers=headers,data=payload)
-    print(response.text,"hello")
+    if(response.status_code == 200):
+        response = json.loads(response.text)
+        return response['data']
+    else:
+        logging.error("error at complete upload")
+        return False
+
+def delete_file(filename):
+    if os.path.exists(filename):
+                os.remove(filename)
+                # print(f"File {filename} deleted successfully.")
+    else:
+        # print(f"File {filename} not found, unable to delete.")
+        logging.error("unable to find file and not deleted")
+
+def create_csv_file():
+    csv_file = 'concept_card_id_mapping'
+    with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+    
+        # Write the header
+        writer.writerow(['old_concept_card_id', 'new_concept_card_id'])
+    return csv_file
+
+def upload_to_csv_file(csv_file_name,old_id,new_id):
+    with open(csv_file_name, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+    
+        # Write the header
+        writer.writerow([old_id,new_id])
+
 
 
 csv_file = 'class12_JEE.csv'
 with open(csv_file,mode='r',encoding='utf-8') as file:
     csv_reader = csv.DictReader(file)
-    i=0
+    csv_file = create_csv_file()
+    i=1
     payloads = []
+    for i in range(1,21):
+        print(i)
+        next(csv_reader)
+
+    i=i+1    
     for row in csv_reader:
+        if(i==22):
+            break
         try:
-        
             payload = csv_payload_template.copy()
 
             payload['concept_card_id'] = row['Concept Card ID']
@@ -296,6 +347,8 @@ with open(csv_file,mode='r',encoding='utf-8') as file:
             payload['offline_subject'] = row['Offline_subject']
             payload['offline_super_topic'] = row['Offline_suptertopic']
             payload['offline_topic'] = row['Offline_topic']
+
+            print(i,"     ",row["Concept Card Name"])
             # print(payload)
 
             presigned_url = get_presigned_url(row['Concept Card ID'])
@@ -305,20 +358,20 @@ with open(csv_file,mode='r',encoding='utf-8') as file:
             file_format = 'json'
             # get_material_formattype(row['Concept Card ID'])
             bulkresponse = validate_bulk(payload)
-            print("bulk reponse completed")
             # print(bulkresponse)
             id = create(bulkresponse,filename)
-            print("create done ")
             upload_id = init_multipart_upload(id,file_format)
             new_presigned_url = upload_part(id,upload_id)
             etag = upload_file(new_presigned_url,filename,file_format)
             complete_upload(id,etag,upload_id)
+            delete_file(filename)
+
+            print(i," done")
         except Exception as e:
-            print("error occuurred at")
             logging.error(e)
+            logging.error("at concept_card_id  ",row["Concept Card ID"])
         i=i+1
-        if(i==2):
-            break
+        
 
 # get_material_formattype("dd850bed-12c1-4b81-974a-c725411d9cf2")
 # get_presigned_url("dd850bed-12c1-4b81-974a-c725411d9cf2")

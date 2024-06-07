@@ -49,7 +49,7 @@ taxanomy_payload_template= {
       "stream": "",
       "taxonomy_attributes": {
         
-        "class": "Class 12",
+        "class": "Class 11",
         "subject": "",
         "super_topic": "",
         "topic": "",
@@ -121,7 +121,7 @@ def validate_bulk(csvdata):
     # print(payload)
     headers = {
         'Content-Type':'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhVVNzVzhHSTAzZHlRMEFJRlZuOTIiLCJkX3R5cGUiOiJ3ZWIiLCJkaWQiOiJmNjFhMWUzOS1mZWM1LTQwZDEtYTZmMy1hMGJkNDgwMmY0OWQiLCJlX2lkIjoiOTQxOTY3MjU4IiwiZXhwIjoxNzE3NzE4Mjc2LCJpYXQiOiIyMDI0LTA2LTA2VDA1OjU3OjU2LjY2NjY1NDU2NloiLCJpc3MiOiJhdXRoZW50aWNhdGlvbi5hbGxlbi1wcm9kIiwiaXN1IjoiIiwicHQiOiJJTlRFUk5BTF9VU0VSIiwic2lkIjoiOTZlOGM1YTktMWQyNS00MDc0LThiMjgtYWY3YjdjNDZkZTgxIiwidGlkIjoiYVVTc1c4R0kwM2R5UTBBSUZWbjkyIiwidHlwZSI6ImFjY2VzcyIsInVpZCI6Ild4NUlDR3VxM2tkQnpqTkpVdE1GQiJ9.oV5lRCqgf6ikrbpunFD7W6N8XqEwsbhOsfeBqPc57c0'
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhVVNzVzhHSTAzZHlRMEFJRlZuOTIiLCJkX3R5cGUiOiJ3ZWIiLCJkaWQiOiJmNjFhMWUzOS1mZWM1LTQwZDEtYTZmMy1hMGJkNDgwMmY0OWQiLCJlX2lkIjoiOTQxOTY3MjU4IiwiZXhwIjoxNzE3Nzk3NDY2LCJpYXQiOiIyMDI0LTA2LTA3VDAzOjU3OjQ2LjI4NzYwNzA5OFoiLCJpc3MiOiJhdXRoZW50aWNhdGlvbi5hbGxlbi1wcm9kIiwiaXN1IjoiIiwicHQiOiJJTlRFUk5BTF9VU0VSIiwic2lkIjoiOTZlOGM1YTktMWQyNS00MDc0LThiMjgtYWY3YjdjNDZkZTgxIiwidGlkIjoiYVVTc1c4R0kwM2R5UTBBSUZWbjkyIiwidHlwZSI6ImFjY2VzcyIsInVpZCI6Ild4NUlDR3VxM2tkQnpqTkpVdE1GQiJ9.q5eA_-kCfzLkx8EKXXC2MB0Fi-pH6oMVBU_Qq1j647Y'
     }
     payload = json.dumps({
         "requests":[
@@ -131,16 +131,23 @@ def validate_bulk(csvdata):
     bulk_upload_url = "https://api.allen-live.in/api/v1/learningMaterials/validate/bulk"
 
     response = requests.request("POST",bulk_upload_url,headers=headers,data=payload)
-    if(response.status_code == 200):
+    # response = json.loads(response.text)
+    print(response)
+    # if(response.status_code == 200):
     
-        response = json.loads(response.text)
+    #     response = json.loads(response.text)
+    #     # print(response)
+    #     # # create(response,filename)
+    #     # logging.info("valdate bulk called")
+    #     return response
+    # else:
+    #     logging.error("Error Ocuured in validate Bulk",response)
+    #     return None
+    response = json.loads(response.text)
         # print(response)
         # # create(response,filename)
         # logging.info("valdate bulk called")
-        return response
-    else:
-        logging.error("Error Ocuured in validate Bulk",)
-        return None
+    return response
 
 def create(res,filename):
     url = f"https://api.allen-live.in/api/v1/learningMaterials/bulk_create"
@@ -289,10 +296,10 @@ def complete_upload(id,etag,upload_id):
     response = requests.request("POST",url,headers=headers,data=payload)
     if(response.status_code == 200):
         response = json.loads(response.text)
-        return response['data']
+        return response['data']['id']
     else:
         logging.error("error at complete upload")
-        return False
+        return None
 
 def delete_file(filename):
     if os.path.exists(filename):
@@ -303,7 +310,7 @@ def delete_file(filename):
         logging.error("unable to find file and not deleted")
 
 def create_csv_file():
-    csv_file = 'concept_card_id_mapping'
+    csv_file = 'concept_card_id_mapping.csv'
     with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
     
@@ -311,29 +318,38 @@ def create_csv_file():
         writer.writerow(['old_concept_card_id', 'new_concept_card_id'])
     return csv_file
 
-def upload_to_csv_file(csv_file_name,old_id,new_id):
-    with open(csv_file_name, mode='w', newline='', encoding='utf-8') as file:
+def upload_to_csv_file(mapping_file_name,i,old_id,new_id):
+    with open(mapping_file_name, mode='a', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
     
         # Write the header
-        writer.writerow([old_id,new_id])
+        writer.writerow([i,old_id,new_id])
+
+def error_upload_file(filename,i,row):
+     with open(filename, mode='a', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+    
+        # Write the header
+        writer.writerow([row['Concept Card ID'],row['Concept Card Name'],row['Concept Card Link'],row['super_topic'],row['topic'],row['sub_topic'],row['Offline_center'],row['Offline_stream'],row['Offline_subject'],row['Offline_suptertopic'],row['Offline_topic'],i])
 
 
 
-csv_file = 'class12_JEE.csv'
+csv_file = 'Class 11th NEET - CC_Offline - Sheet1.csv'
 with open(csv_file,mode='r',encoding='utf-8') as file:
     csv_reader = csv.DictReader(file)
-    csv_file = create_csv_file()
+    mapping_file = 'class11_NEET_mapping.csv'
     i=1
     payloads = []
-    for i in range(1,21):
-        print(i)
+    for i in range(1,101):
+        # print(i)
         next(csv_reader)
-
+    # print(i)
     i=i+1    
     for row in csv_reader:
-        if(i==22):
+        if(i==301):
             break
+        # if(i==3):
+        #     break
         try:
             payload = csv_payload_template.copy()
 
@@ -356,20 +372,22 @@ with open(csv_file,mode='r',encoding='utf-8') as file:
             filename = save_file(presigned_url)
             # print(filename)
             file_format = 'json'
-            # get_material_formattype(row['Concept Card ID'])
             bulkresponse = validate_bulk(payload)
             # print(bulkresponse)
             id = create(bulkresponse,filename)
             upload_id = init_multipart_upload(id,file_format)
             new_presigned_url = upload_part(id,upload_id)
             etag = upload_file(new_presigned_url,filename,file_format)
-            complete_upload(id,etag,upload_id)
+            new_concept_card_id = complete_upload(id,etag,upload_id)
             delete_file(filename)
-
+            upload_to_csv_file(mapping_file,i,row["Concept Card ID"],new_concept_card_id)
             print(i," done")
+            # error_upload_file('class11_JEE_error.csv',i,row)
         except Exception as e:
-            logging.error(e)
-            logging.error("at concept_card_id  ",row["Concept Card ID"])
+            print("error bloack called")
+            error_upload_file('class11_JEE_error.csv',i,row)
+            # logging.error(e)
+            # logging.error("at concept_card_id  ",row["Concept Card ID"])
         i=i+1
         
 
